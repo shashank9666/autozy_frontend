@@ -27,7 +27,8 @@ export type ModuleKey =
   | 'addons'
   | 'customers'
   | 'reports'
-  | 'settings';
+  | 'settings'
+  | 'notifications';
 
 /** What each role is allowed to access. '*' means everything. */
 export const ROLE_PERMISSIONS: Record<StaffRole, ModuleKey[] | '*'> = {
@@ -35,8 +36,9 @@ export const ROLE_PERMISSIONS: Record<StaffRole, ModuleKey[] | '*'> = {
   CITY_MANAGER: [
     'dashboard', 'areas', 'staff', 'subscriptions', 'inspections',
     'services', 'tickets', 'payments', 'addons', 'customers', 'reports',
+    'notifications',
   ],
-  SUPERVISOR: ['dashboard', 'staff', 'services', 'inspections', 'tickets', 'reports'],
+  SUPERVISOR: ['dashboard', 'staff', 'services', 'inspections', 'tickets', 'reports', 'notifications'],
   DETAILER: ['dashboard', 'services'],
   INSPECTOR: ['dashboard', 'inspections'],
   SPECIALIST: ['dashboard', 'addons', 'services'],

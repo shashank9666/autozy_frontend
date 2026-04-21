@@ -40,9 +40,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // 2. Route guard: redirect to default page if current route is forbidden
   useEffect(() => {
     if (!hydrated || !staff) return;
+    const role = staff.role.toUpperCase();
     const mod = moduleFromPath(pathname);
-    if (mod && !canAccess(staff.role, mod)) {
-      router.replace(defaultRouteFor(staff.role));
+    if (mod && !canAccess(role, mod)) {
+      router.replace(defaultRouteFor(role));
     }
   }, [pathname, staff, hydrated, router]);
 

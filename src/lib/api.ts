@@ -81,6 +81,8 @@ export const subscriptionsApi = {
 export const inspectionsApi = {
   getAll: (params?: any) => api.get('/admin/inspections', { params }),
   getById: (id: string) => api.get(`/admin/inspections/${id}`),
+  create: (data: any) => api.post('/admin/inspections', data),
+  update: (id: string, data: any) => api.patch(`/admin/inspections/${id}`, data),
 };
 
 // Daily Services

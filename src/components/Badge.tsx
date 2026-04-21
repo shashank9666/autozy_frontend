@@ -7,6 +7,7 @@ interface BadgeProps {
   variant?: 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'default';
   size?: 'sm' | 'md';
   dot?: boolean;
+  className?: string;
   children: ReactNode;
 }
 
@@ -19,7 +20,7 @@ const VARIANTS: Record<NonNullable<BadgeProps['variant']>, { bg: string; text: s
   default: { bg: 'bg-gray-100',    text: 'text-gray-800',    ring: 'ring-gray-200',    dot: 'bg-gray-400'    },
 };
 
-export default function Badge({ variant = 'default', size = 'sm', dot = false, children }: BadgeProps) {
+export default function Badge({ variant = 'default', size = 'sm', dot = false, className = '', children }: BadgeProps) {
   const v = VARIANTS[variant];
   return (
     <span
@@ -27,6 +28,7 @@ export default function Badge({ variant = 'default', size = 'sm', dot = false, c
         'inline-flex items-center gap-1.5 rounded-full font-medium ring-1 ring-inset',
         size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm',
         v.bg, v.text, v.ring,
+        className,
       )}
     >
       {dot && <span className={clsx('w-1.5 h-1.5 rounded-full', v.dot)} />}

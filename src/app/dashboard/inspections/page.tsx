@@ -1,25 +1,103 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { inspectionsApi } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { inspectionsApi, staffApi, subscriptionsApi } from '@/lib/api';
 import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
 import ExportButton from '@/components/ExportButton';
 import { exportAllPages } from '@/lib/export';
+import Modal from '@/components/Modal';
+import FormInput from '@/components/FormInput';
+import { useAuthStore } from '@/lib/store';
 
 const statusOptions = ['ALL', 'PENDING', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'FAILED'];
 
 export default function InspectionsPage() {
+  const queryClient = useQueryClient();
+  const staff = useAuthStore((s) => s.staff);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    subscription_id: '',
+    vehicle_id: '',
+    inspector_id: '',
+    status: 'PENDING',
+    scheduled_at: '',
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['inspections', statusFilter],
     queryFn: () => inspectionsApi.getAll({ status: statusFilter !== 'ALL' ? statusFilter : undefined, page: 1, limit: 50 }),
   });
 
+  const { data: staffData } = useQuery({
+    queryKey: ['staff', 'INSPECTOR'],
+    queryFn: () => staffApi.getAll({ role: 'INSPECTOR', limit: 100 }),
+    enabled: showModal,
+  });
+
+  const { data: subsData } = useQuery({
+    queryKey: ['subscriptions'],
+    queryFn: () => subscriptionsApi.getAll({ limit: 100 }),
+    enabled: showModal,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => inspectionsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inspections'] });
+      setShowModal(false);
+      resetForm();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => inspectionsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inspections'] });
+      setShowModal(false);
+      resetForm();
+    },
+  });
+
+  const resetForm = () => {
+    setForm({
+      subscription_id: '',
+      vehicle_id: '',
+      inspector_id: '',
+      status: 'PENDING',
+      scheduled_at: '',
+    });
+    setEditingId(null);
+  };
+
+  const handleEdit = (insp: any) => {
+    setEditingId(insp.id);
+    setForm({
+      subscription_id: insp.subscription_id || '',
+      vehicle_id: insp.vehicle_id || '',
+      inspector_id: insp.inspector_id || '',
+      status: insp.status || 'PENDING',
+      scheduled_at: insp.scheduled_at ? new Date(insp.scheduled_at).toISOString().slice(0, 16) : '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data: form });
+    } else {
+      createMutation.mutate(form);
+    }
+  };
+
   const inspections = data?.data?.data?.items || data?.data?.data || data?.data?.items || [];
   const allInspections = Array.isArray(inspections) ? inspections : [];
+  const inspectors = staffData?.data?.items || staffData?.data || [];
+  const subscriptions = subsData?.data?.items || subsData?.data || [];
 
   const counts = {
     pending: allInspections.filter((i: any) => i.status === 'PENDING').length,
@@ -36,6 +114,9 @@ export default function InspectionsPage() {
     return <Badge variant={map[status] || 'default'}>{status.replace('_', ' ')}</Badge>;
   };
 
+  const role = staff?.role?.toUpperCase();
+  const canManage = role === 'ADMIN' || role === 'INSPECTOR' || role === 'CITY_MANAGER' || role === 'SUPERVISOR';
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -43,27 +124,37 @@ export default function InspectionsPage() {
           <h1 className="text-2xl font-bold text-autozy-charcoal">Inspections</h1>
           <p className="text-sm text-gray-500 mt-1">Vehicle inspection queue & history</p>
         </div>
-        <ExportButton
-          onClick={async () => {
-            try {
-              await exportAllPages(
-                (p, l) => inspectionsApi.getAll({
-                  status: statusFilter !== 'ALL' ? statusFilter : undefined,
-                  page: p, limit: l,
-                }),
-                [
-                  { key: 'vehicle.vehicle_number', header: 'Vehicle', transform: (v, r) => v || r.vehicle_id?.slice(0, 8) || '-' },
-                  { key: 'inspector.name', header: 'Inspector', transform: (v) => v || 'Unassigned' },
-                  { key: 'status', header: 'Status' },
-                  { key: 'scheduled_at', header: 'Scheduled', transform: (v) => v ? new Date(v).toLocaleString('en-IN') : '-' },
-                  { key: 'completed_at', header: 'Completed', transform: (v) => v ? new Date(v).toLocaleString('en-IN') : '-' },
-                ],
-                'inspections',
-              );
-            } catch (e: any) { alert(e.message); }
-          }}
-          disabled={isLoading || allInspections.length === 0}
-        />
+        <div className="flex gap-2">
+          {canManage && (
+            <button
+              onClick={() => { resetForm(); setShowModal(true); }}
+              className="px-4 py-2 bg-autozy-yellow text-autozy-dark rounded-lg font-medium text-sm hover:bg-yellow-400 transition-colors"
+            >
+              + New Inspection
+            </button>
+          )}
+          <ExportButton
+            onClick={async () => {
+              try {
+                await exportAllPages(
+                  (p, l) => inspectionsApi.getAll({
+                    status: statusFilter !== 'ALL' ? statusFilter : undefined,
+                    page: p, limit: l,
+                  }),
+                  [
+                    { key: 'vehicle.vehicle_number', header: 'Vehicle', transform: (v, r) => v || r.vehicle_id?.slice(0, 8) || '-' },
+                    { key: 'inspector.name', header: 'Inspector', transform: (v) => v || 'Unassigned' },
+                    { key: 'status', header: 'Status' },
+                    { key: 'scheduled_at', header: 'Scheduled', transform: (v) => v ? new Date(v).toLocaleString('en-IN') : '-' },
+                    { key: 'completed_at', header: 'Completed', transform: (v) => v ? new Date(v).toLocaleString('en-IN') : '-' },
+                  ],
+                  'inspections',
+                );
+              } catch (e: any) { alert(e.message); }
+            }}
+            disabled={isLoading || allInspections.length === 0}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
@@ -110,6 +201,7 @@ export default function InspectionsPage() {
                   <th className="px-4 py-3 text-left">Status</th>
                   <th className="px-4 py-3 text-left">Scheduled</th>
                   <th className="px-4 py-3 text-left">Completed</th>
+                  <th className="px-4 py-3 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -127,6 +219,16 @@ export default function InspectionsPage() {
                     <td className="px-4 py-3 text-gray-500">
                       {insp.completed_at ? new Date(insp.completed_at).toLocaleString('en-IN') : '-'}
                     </td>
+                    <td className="px-4 py-3">
+                      {canManage && (
+                        <button
+                          onClick={() => handleEdit(insp)}
+                          className="text-blue-600 hover:underline font-medium"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -134,6 +236,87 @@ export default function InspectionsPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingId ? 'Edit Inspection' : 'New Inspection'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Subscription / Vehicle</label>
+            <select
+              value={form.subscription_id}
+              onChange={(e) => {
+                const sub = subscriptions.find((s: any) => s.id === e.target.value);
+                setForm({ ...form, subscription_id: e.target.value, vehicle_id: sub?.vehicle_id || '' });
+              }}
+              className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+              required
+            >
+              <option value="">Select Subscription</option>
+              {subscriptions.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.vehicle?.vehicle_number} ({s.user?.name})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Inspector</label>
+            <select
+              value={form.inspector_id}
+              onChange={(e) => setForm({ ...form, inspector_id: e.target.value })}
+              className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+            >
+              <option value="">Unassigned</option>
+              {inspectors.map((i: any) => (
+                <option key={i.id} value={i.id}>{i.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+              required
+            >
+              {statusOptions.filter(o => o !== 'ALL').map(o => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+          </div>
+
+          <FormInput
+            label="Scheduled Date & Time"
+            type="datetime-local"
+            value={form.scheduled_at}
+            onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
+            required
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="px-4 py-2 bg-autozy-yellow text-autozy-dark rounded-lg text-sm font-medium disabled:opacity-40"
+            >
+              {editingId ? 'Update Inspection' : 'Create Inspection'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
