@@ -154,4 +154,11 @@ export const reportsApi = {
   getTopAreas: (params?: any) => api.get('/admin/reports/top-areas', { params }),
 };
 
+// Notifications
+export const notificationsApi = {
+  getAll: (params?: any) => api.get('/notifications', { params }),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markRead: (id: string) => api.patch(`/notifications/${id}/read`),
+};
+
 export default api;

@@ -31,7 +31,7 @@ export default function PricingPage() {
   const { data: pricingData, isLoading } = useQuery({
     queryKey: ['pricing', selectedCity],
     queryFn: () => pricingApi.getMatrix(selectedCity),
-    enabled: !!selectedCity,
+    // enabled: true by default
   });
 
   const createMutation = useMutation({
@@ -78,9 +78,11 @@ export default function PricingPage() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        {selectedCity && (
-          <span className="text-sm text-gray-500">{pricingList.length} pricing rules configured</span>
-        )}
+        <span className="text-sm text-gray-500">
+          {selectedCity 
+            ? `${pricingList.length} pricing rules in this city` 
+            : `Total ${pricingList.length} pricing rules across all cities`}
+        </span>
       </div>
 
       {showCreate && selectedCity && (
@@ -130,12 +132,8 @@ export default function PricingPage() {
         </div>
       )}
 
-      {!selectedCity ? (
-        <div className="bg-white rounded-xl p-12 text-center text-gray-400 shadow-sm">
-          Select a city to view pricing matrix
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm">
+      {/* No placeholder needed anymore since we show all data by default */}
+      <div className="bg-white rounded-xl shadow-sm">
           <div className="p-4 border-b">
             <h3 className="font-semibold text-autozy-charcoal">Pricing Matrix</h3>
           </div>
@@ -147,12 +145,13 @@ export default function PricingPage() {
               ))}
             </div>
           ) : pricingList.length === 0 ? (
-            <div className="p-12 text-center text-gray-400">No pricing configured for this city</div>
+            <div className="p-12 text-center text-gray-400">No pricing rules found</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                   <tr>
+                    <th className="px-4 py-3 text-left">City</th>
                     <th className="px-4 py-3 text-left">Plan</th>
                     <th className="px-4 py-3 text-left">Vehicle Size</th>
                     <th className="px-4 py-3 text-left">Monthly Price</th>
@@ -162,8 +161,9 @@ export default function PricingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {pricingList.map((p: any) => (
+                   {pricingList.map((p: any) => (
                     <tr key={p.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium text-autozy-charcoal">{p.city?.name || 'Global'}</td>
                       <td className="px-4 py-3 font-medium">{p.plan?.name || '-'}</td>
                       <td className="px-4 py-3">
                         <Badge variant="default">{p.vehicle_size}</Badge>
@@ -189,7 +189,7 @@ export default function PricingPage() {
             </div>
           )}
         </div>
-      )}
+
     </div>
   );
 }
