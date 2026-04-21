@@ -89,6 +89,8 @@ export const inspectionsApi = {
 export const servicesApi = {
   getDailyStatus: (params?: any) => api.get('/admin/services/daily-status', { params }),
   getRecords: (params?: any) => api.get('/admin/services/records', { params }),
+  createRecord: (data: any) => api.post('/admin/services/records', data),
+  updateRecord: (id: string, data: any) => api.patch(`/admin/services/records/${id}`, data),
 };
 
 // System Config

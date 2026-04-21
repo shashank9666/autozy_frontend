@@ -1,19 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { servicesApi, dashboardApi } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { servicesApi, dashboardApi, staffApi, subscriptionsApi } from '@/lib/api';
 import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
 import ExportButton from '@/components/ExportButton';
 import { exportAllPages } from '@/lib/export';
+import Modal from '@/components/Modal';
+import { useAuthStore } from '@/lib/store';
+
+const statusOptions = ['PENDING', 'CLEANED', 'CNA', 'MISSED'];
 
 export default function DailyServicesPage() {
+  const queryClient = useQueryClient();
+  const staff = useAuthStore((s) => s.staff);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    subscription_id: '',
+    vehicle_id: '',
+    detailer_id: '',
+    service_date: selectedDate,
+    status: 'PENDING',
+    notes: '',
+  });
 
   const { data: opsData, isLoading: opsLoading } = useQuery({
-    queryKey: ['operations-dashboard'],
-    queryFn: () => dashboardApi.getOperations(),
+    queryKey: ['operations-dashboard', selectedDate],
+    queryFn: () => dashboardApi.getOperations(selectedDate),
   });
 
   const { data: recordsData, isLoading: recordsLoading } = useQuery({
@@ -21,9 +37,85 @@ export default function DailyServicesPage() {
     queryFn: () => servicesApi.getRecords({ date: selectedDate, page: 1, limit: 100 }),
   });
 
+  const { data: staffData } = useQuery({
+    queryKey: ['staff', 'DETAILER'],
+    queryFn: () => staffApi.getAll({ role: 'DETAILER', limit: 100 }),
+    enabled: showModal,
+  });
+
+  const { data: subsData } = useQuery({
+    queryKey: ['subscriptions'],
+    queryFn: () => subscriptionsApi.getAll({ limit: 100 }),
+    enabled: showModal,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => servicesApi.createRecord(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-records'] });
+      queryClient.invalidateQueries({ queryKey: ['operations-dashboard'] });
+      setShowModal(false);
+      resetForm();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => servicesApi.updateRecord(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-records'] });
+      queryClient.invalidateQueries({ queryKey: ['operations-dashboard'] });
+      setShowModal(false);
+      resetForm();
+    },
+  });
+
+  const resetForm = () => {
+    setForm({
+      subscription_id: '',
+      vehicle_id: '',
+      detailer_id: '',
+      service_date: selectedDate,
+      status: 'PENDING',
+      notes: '',
+    });
+    setEditingId(null);
+  };
+
+  const handleEdit = (rec: any) => {
+    setEditingId(rec.id);
+    setForm({
+      subscription_id: rec.subscription_id || '',
+      vehicle_id: rec.vehicle_id || '',
+      detailer_id: rec.detailer_id || '',
+      service_date: rec.service_date || selectedDate,
+      status: rec.status || 'PENDING',
+      notes: rec.notes || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data: form });
+    } else {
+      createMutation.mutate(form);
+    }
+  };
+
+  const getArray = (res: any) => {
+    const d = res?.data;
+    if (!d) return [];
+    if (Array.isArray(d.data)) return d.data;
+    if (Array.isArray(d.data?.items)) return d.data.items;
+    if (Array.isArray(d.items)) return d.items;
+    return [];
+  };
+
   const stats = opsData?.data?.data || opsData?.data || {};
-  const records = recordsData?.data?.data?.items || recordsData?.data?.data || recordsData?.data?.items || [];
-  const recordsList = Array.isArray(records) ? records : [];
+  const recordsList = getArray(recordsData);
+  const detailers = getArray(staffData);
+  const subscriptions = getArray(subsData);
 
   const isLoading = opsLoading || recordsLoading;
 
@@ -34,6 +126,8 @@ export default function DailyServicesPage() {
     return <Badge variant={map[status] || 'default'}>{status}</Badge>;
   };
 
+  const canManage = staff?.role === 'ADMIN' || staff?.role === 'CITY_MANAGER' || staff?.role === 'SUPERVISOR';
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -42,6 +136,14 @@ export default function DailyServicesPage() {
           <p className="text-sm text-gray-500 mt-1">Real-time cleaning operations monitoring</p>
         </div>
         <div className="flex gap-2">
+          {canManage && (
+            <button
+              onClick={() => { resetForm(); setShowModal(true); }}
+              className="px-4 py-2 bg-autozy-yellow text-autozy-dark rounded-lg font-medium text-sm hover:bg-yellow-400 transition-colors"
+            >
+              + Add Record
+            </button>
+          )}
           <ExportButton
             onClick={async () => {
               try {
@@ -101,6 +203,7 @@ export default function DailyServicesPage() {
                   <th className="px-4 py-3 text-left">Completed At</th>
                   <th className="px-4 py-3 text-left">Photos</th>
                   <th className="px-4 py-3 text-left">Notes</th>
+                  <th className="px-4 py-3 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -120,6 +223,16 @@ export default function DailyServicesPage() {
                     <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
                       {rec.notes || '-'}
                     </td>
+                    <td className="px-4 py-3">
+                      {canManage && (
+                        <button
+                          onClick={() => handleEdit(rec)}
+                          className="text-blue-600 hover:underline font-medium"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -127,6 +240,102 @@ export default function DailyServicesPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingId ? 'Edit Service Record' : 'Add Service Record'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Subscription / Vehicle</label>
+            <select
+              value={form.subscription_id}
+              onChange={(e) => {
+                const sub = subscriptions.find((s: any) => s.id === e.target.value);
+                setForm({ ...form, subscription_id: e.target.value, vehicle_id: sub?.vehicle_id || '' });
+              }}
+              className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+              required
+            >
+              <option value="">Select Subscription</option>
+              {subscriptions.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.vehicle?.vehicle_number} ({s.user?.name})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Detailer</label>
+            <select
+              value={form.detailer_id}
+              onChange={(e) => setForm({ ...form, detailer_id: e.target.value })}
+              className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+              required
+            >
+              <option value="">Select Detailer</option>
+              {detailers.map((d: any) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Service Date</label>
+              <input
+                type="date"
+                value={form.service_date}
+                onChange={(e) => setForm({ ...form, service_date: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
+                required
+              >
+                {statusOptions.map(o => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="w-full px-4 py-2 border rounded-lg text-sm bg-white h-24"
+              placeholder="Internal notes..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="px-4 py-2 bg-autozy-yellow text-autozy-dark rounded-lg text-sm font-medium disabled:opacity-40"
+            >
+              {editingId ? 'Update Record' : 'Create Record'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
