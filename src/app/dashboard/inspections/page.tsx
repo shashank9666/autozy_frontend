@@ -94,10 +94,18 @@ export default function InspectionsPage() {
     }
   };
 
-  const inspections = data?.data?.data?.items || data?.data?.data || data?.data?.items || [];
-  const allInspections = Array.isArray(inspections) ? inspections : [];
-  const inspectors = staffData?.data?.items || staffData?.data || [];
-  const subscriptions = subsData?.data?.items || subsData?.data || [];
+  const getArray = (res: any) => {
+    const d = res?.data;
+    if (!d) return [];
+    if (Array.isArray(d.data)) return d.data;
+    if (Array.isArray(d.data?.items)) return d.data.items;
+    if (Array.isArray(d.items)) return d.items;
+    return [];
+  };
+
+  const allInspections = getArray(data);
+  const inspectors = getArray(staffData);
+  const subscriptions = getArray(subsData);
 
   const counts = {
     pending: allInspections.filter((i: any) => i.status === 'PENDING').length,
