@@ -75,6 +75,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const staff = useAuthStore((s) => s.staff);
   const logout = useAuthStore((s) => s.logout);
 
@@ -101,37 +102,63 @@ export default function Sidebar() {
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === href : pathname === href || pathname.startsWith(href + '/');
 
-  const navContent = (
+  const renderNavContent = (collapsed: boolean) => (
     <>
       {/* Brand */}
-      <div className="px-5 pt-6 pb-5 border-b border-nav-border/60">
-        <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-autozy-yellow to-autozy-yellow-dark flex items-center justify-center shadow-glow-yellow group-hover:scale-105 transition-transform">
-            <span className="text-autozy-dark font-extrabold text-base">A</span>
+      <div className={clsx("px-5 pt-6 pb-5 border-b border-nav-border/60 flex items-center", collapsed ? "justify-center" : "justify-between")}>
+        <Link href="/dashboard" className="flex items-center gap-2.5 group" title={collapsed ? "Dashboard" : undefined}>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-autozy-yellow to-autozy-yellow-dark flex items-center justify-center shadow-glow-yellow group-hover:scale-105 transition-transform flex-shrink-0 text-autozy-dark">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+              <circle cx="7" cy="17" r="2"/>
+              <path d="M9 17h6"/>
+              <circle cx="17" cy="17" r="2"/>
+            </svg>
           </div>
-          <div>
-            <h1 className="text-base font-extrabold text-white tracking-tight leading-none">AUTOZY</h1>
-            <p className="text-[10px] text-nav-text-muted mt-0.5 tracking-widest uppercase">Admin</p>
-          </div>
+          {!collapsed && (
+            <div>
+              <h1 className="text-base font-extrabold text-white tracking-tight leading-none">AUTOZY</h1>
+              <p className="text-[10px] text-nav-text-muted mt-0.5 tracking-widest uppercase">Admin</p>
+            </div>
+          )}
         </Link>
+        {!collapsed && (
+          <button onClick={() => setIsCollapsed(true)} className="hidden lg:block text-nav-text-muted hover:text-white transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+               <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
       </div>
+
+      {collapsed && (
+        <div className="pt-4 pb-2 flex justify-center border-b border-nav-border/60">
+           <button onClick={() => setIsCollapsed(false)} className="text-nav-text-muted hover:text-white transition-colors" title="Expand Sidebar">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+               <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* User card */}
       {staff && (
-        <div className="mx-3 mt-3 px-3 py-2.5 bg-nav-surface/80 border border-nav-border/60 rounded-xl flex items-center gap-3">
-          <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-autozy-yellow to-autozy-yellow-dark text-autozy-dark font-bold flex items-center justify-center flex-shrink-0 text-sm">
+        <div className={clsx("mx-3 mt-3 px-3 py-2.5 bg-nav-surface/80 border border-nav-border/60 flex items-center gap-3", collapsed ? "rounded-full justify-center px-0" : "rounded-xl")}>
+          <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-autozy-yellow to-autozy-yellow-dark text-autozy-dark font-bold flex items-center justify-center flex-shrink-0 text-sm" title={collapsed ? staff.name : undefined}>
             {initials}
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-nav-bg" />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white truncate leading-tight">{staff.name}</p>
-            <span className={clsx(
-              'inline-flex items-center px-1.5 py-0.5 mt-0.5 rounded text-[10px] font-semibold',
-              roleMeta.bg, roleMeta.text,
-            )}>
-              {roleMeta.label}
-            </span>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white truncate leading-tight">{staff.name}</p>
+              <span className={clsx(
+                'inline-flex items-center px-1.5 py-0.5 mt-0.5 rounded text-[10px] font-semibold',
+                roleMeta.bg, roleMeta.text,
+              )}>
+                {roleMeta.label}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -139,9 +166,11 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 mt-4 overflow-y-auto scrollbar-dark pb-4">
         {visibleSections.map((sec) => (
           <div key={sec.title} className="mb-5">
-            <p className="px-3 mb-1.5 text-[10px] font-semibold tracking-widest uppercase text-nav-text-muted">
-              {sec.title}
-            </p>
+            {!collapsed && (
+              <p className="px-3 mb-1.5 text-[10px] font-semibold tracking-widest uppercase text-nav-text-muted">
+                {sec.title}
+              </p>
+            )}
             <div className="space-y-0.5">
               {sec.items.map((item) => {
                 const active = isActive(item.href);
@@ -151,11 +180,13 @@ export default function Sidebar() {
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={clsx(
-                      'group relative flex items-center gap-3 pl-3 pr-3 py-2 rounded-lg text-sm font-medium transition-all',
+                      'group relative flex items-center rounded-lg text-sm font-medium transition-all',
+                      collapsed ? 'justify-center p-2 mx-auto w-10 h-10' : 'gap-3 pl-3 pr-3 py-2',
                       active
                         ? 'bg-autozy-yellow/10 text-autozy-yellow'
                         : 'text-nav-text hover:bg-nav-hover hover:text-white',
                     )}
+                    title={collapsed ? item.label : undefined}
                   >
                     {/* Active indicator bar */}
                     <span
@@ -170,7 +201,7 @@ export default function Sidebar() {
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                     </svg>
-                    <span className="truncate">{item.label}</span>
+                    {!collapsed && <span className="truncate">{item.label}</span>}
                   </Link>
                 );
               })}
@@ -183,16 +214,22 @@ export default function Sidebar() {
       <div className="p-3 border-t border-nav-border/60">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-nav-text hover:bg-red-500/10 hover:text-red-300 transition-colors"
+          title={collapsed ? "Sign out" : undefined}
+          className={clsx(
+            "flex items-center rounded-lg text-sm font-medium text-nav-text hover:bg-red-500/10 hover:text-red-300 transition-colors",
+            collapsed ? "justify-center p-2 mx-auto w-10 h-10" : "gap-3 w-full px-3 py-2"
+          )}
         >
-          <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+          <svg className="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          Sign out
+          {!collapsed && <span>Sign out</span>}
         </button>
-        <p className="text-[10px] text-nav-text-muted mt-2 px-3 leading-relaxed">
-          v1.0 · Daily car care.<br />Done right.
-        </p>
+        {!collapsed && (
+          <p className="text-[10px] text-nav-text-muted mt-2 px-3 leading-relaxed text-center">
+            v1.0 · Daily car care.<br />Done right.
+          </p>
+        )}
       </div>
     </>
   );
@@ -217,14 +254,17 @@ export default function Sidebar() {
             className="w-72 bg-nav-bg min-h-screen flex flex-col animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
-            {navContent}
+            {renderNavContent(false)}
           </aside>
         </div>
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 bg-nav-bg min-h-screen flex-col border-r border-nav-border/60 sticky top-0 max-h-screen">
-        {navContent}
+      <aside className={clsx(
+        "hidden lg:flex bg-nav-bg min-h-screen flex-col border-r border-nav-border/60 sticky top-0 max-h-screen transition-all duration-300",
+        isCollapsed ? "w-20" : "w-64"
+      )}>
+        {renderNavContent(isCollapsed)}
       </aside>
     </>
   );

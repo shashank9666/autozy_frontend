@@ -25,6 +25,11 @@ export default function InspectionsPage() {
     inspector_id: '',
     status: 'PENDING',
     scheduled_at: '',
+    parking_available: false,
+    pillar_number: '',
+    keys_provided: false,
+    security_permission: false,
+    internal_cleaning_required: false,
   });
 
   const { data, isLoading } = useQuery({
@@ -69,6 +74,11 @@ export default function InspectionsPage() {
       inspector_id: '',
       status: 'PENDING',
       scheduled_at: '',
+      parking_available: false,
+      pillar_number: '',
+      keys_provided: false,
+      security_permission: false,
+      internal_cleaning_required: false,
     });
     setEditingId(null);
   };
@@ -81,6 +91,11 @@ export default function InspectionsPage() {
       inspector_id: insp.inspector_id || '',
       status: insp.status || 'PENDING',
       scheduled_at: insp.scheduled_at ? new Date(insp.scheduled_at).toISOString().slice(0, 16) : '',
+      parking_available: insp.parking_available || false,
+      pillar_number: insp.pillar_number || '',
+      keys_provided: insp.keys_provided || false,
+      security_permission: insp.security_permission || false,
+      internal_cleaning_required: insp.internal_cleaning_required || false,
     });
     setShowModal(true);
   };
@@ -305,6 +320,52 @@ export default function InspectionsPage() {
             value={form.scheduled_at}
             onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
             required
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="parking_available"
+                checked={form.parking_available}
+                onChange={(e) => setForm({ ...form, parking_available: e.target.checked })}
+              />
+              <label htmlFor="parking_available" className="text-sm">Parking Available</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="keys_provided"
+                checked={form.keys_provided}
+                onChange={(e) => setForm({ ...form, keys_provided: e.target.checked })}
+              />
+              <label htmlFor="keys_provided" className="text-sm">Keys Provided</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="security_permission"
+                checked={form.security_permission}
+                onChange={(e) => setForm({ ...form, security_permission: e.target.checked })}
+              />
+              <label htmlFor="security_permission" className="text-sm">Security Permission</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="internal_cleaning_required"
+                checked={form.internal_cleaning_required}
+                onChange={(e) => setForm({ ...form, internal_cleaning_required: e.target.checked })}
+              />
+              <label htmlFor="internal_cleaning_required" className="text-sm">Internal Cleaning</label>
+            </div>
+          </div>
+
+          <FormInput
+            label="Pillar Number"
+            type="text"
+            value={form.pillar_number}
+            onChange={(e) => setForm({ ...form, pillar_number: e.target.value })}
           />
 
           <div className="flex justify-end gap-3 pt-4">

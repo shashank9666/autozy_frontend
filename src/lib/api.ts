@@ -25,7 +25,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       useAuthStore.getState().logout();
-      window.location.href = '/';
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
     }
     return Promise.reject(error);
   },
@@ -131,12 +133,15 @@ export const expensesApi = {
 // Plans
 export const plansApi = {
   getAll: () => api.get('/plans'),
+  create: (data: any) => api.post('/admin/plans', data),
+  update: (id: string, data: any) => api.patch(`/admin/plans/${id}`, data),
 };
 
 // Pricing
 export const pricingApi = {
   getMatrix: (cityId: string) => api.get('/pricing', { params: { cityId } }),
   create: (data: any) => api.post('/admin/pricing', data),
+  update: (id: string, data: any) => api.patch(`/admin/pricing/${id}`, data),
 };
 
 // Add-ons
@@ -163,6 +168,15 @@ export const notificationsApi = {
   getAll: (params?: any) => api.get('/notifications', { params }),
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  broadcast: (data: { title: string; body: string; audienceType: string; targetId?: string; targetRole?: string }) => api.post('/notifications/broadcast', data),
+};
+
+// Roles
+export const rolesApi = {
+  getAll: () => api.get('/admin/roles'),
+  create: (data: any) => api.post('/admin/roles', data),
+  update: (id: string, data: any) => api.patch(`/admin/roles/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/roles/${id}`),
 };
 
 export default api;

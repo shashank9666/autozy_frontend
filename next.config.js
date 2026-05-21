@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   turbopack: {
-    root: 'C:\\Users\\shett\\Downloads\\Autozy\\admin-panel',
+    root: __dirname,
     resolveAlias: {
       'fs/promises': './src/lib/empty.ts',
       'fs': './src/lib/empty.ts',
