@@ -68,12 +68,6 @@ export default function RolesPage() {
     setForm({ name: '', description: '', permissions: [] });
   };
 
-  const handleDuplicate = (role: any) => {
-    setEditingRole(null);
-    setForm({ name: `${role.name} (Copy)`, description: role.description || '', permissions: role.permissions || [] });
-    setShowModal(true);
-  };
-
   const handleEdit = (role: any) => {
     setEditingRole(role);
     setForm({ name: role.name, description: role.description || '', permissions: role.permissions || [] });
@@ -90,7 +84,7 @@ export default function RolesPage() {
   };
 
   const summary = summaryData?.data?.data || [];
-  const dynamicRoles = rolesData?.data || [];
+  const dynamicRoles = rolesData?.data?.data || [];
   
   const countMap = Object.fromEntries(summary.map((s: any) => [s.role, s.count]));
   const totalStaff = summary.reduce((sum: number, s: any) => sum + s.count, 0);
@@ -184,7 +178,6 @@ export default function RolesPage() {
                 <div className="px-5 py-3 border-t bg-gray-50 flex items-center justify-between">
                   <div className="flex gap-3">
                     <button onClick={() => handleEdit(r)} className="text-xs font-semibold text-autozy-yellow hover:text-yellow-600">Edit</button>
-                    <button onClick={() => handleDuplicate(r)} className="text-xs font-semibold text-gray-500 hover:text-gray-700">Duplicate</button>
                   </div>
                   <button onClick={() => deleteMutation.mutate(r.id)} className="text-xs font-semibold text-red-500 hover:text-red-700">
                     {deleteMutation.isPending ? '...' : 'Delete'}

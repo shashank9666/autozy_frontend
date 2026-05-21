@@ -14,7 +14,7 @@ export default function PricingPage() {
   
   // Pricing Edit Modal State
   const [editingPricing, setEditingPricing] = useState<any>(null);
-  const [editPrice, setEditPrice] = useState<string>('');
+  const [editForm, setEditForm] = useState<any>({});
 
   // Plans Manager Modal State
   const [showPlansModal, setShowPlansModal] = useState(false);
@@ -41,7 +41,6 @@ export default function PricingPage() {
   const { data: pricingData, isLoading } = useQuery({
     queryKey: ['pricing', selectedCity],
     queryFn: () => pricingApi.getMatrix(selectedCity),
-    // enabled: true by default
   });
 
   const createMutation = useMutation({
@@ -54,11 +53,11 @@ export default function PricingPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: { id: string, priceMonthly: number }) => pricingApi.update(data.id, { priceMonthly: data.priceMonthly }),
+    mutationFn: (data: any) => pricingApi.update(data.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pricing'] });
       setEditingPricing(null);
-      setEditPrice('');
+      setEditForm({});
     },
   });
 
@@ -82,7 +81,34 @@ export default function PricingPage() {
 
   const handleEditPricing = (p: any) => {
     setEditingPricing(p);
-    setEditPrice(p.price_monthly.toString());
+    // Parse date safely
+    let effectiveFromStr = '';
+    if (p.effective_from) {
+      try {
+        const d = new Date(p.effective_from);
+        if (!isNaN(d.getTime())) {
+          effectiveFromStr = d.toISOString().split('T')[0];
+        }
+      } catch (_e) { /* ignore */ }
+    }
+    setEditForm({
+      priceMonthly: p.price_monthly?.toString() || '',
+      vehicleSize: p.vehicle_size || 'SEDAN',
+      planId: p.plan_id || p.plan?.id || '',
+      cityId: p.city_id || p.city?.id || '',
+      effectiveFrom: effectiveFromStr,
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingPricing) return;
+    const payload: any = { id: editingPricing.id };
+    if (editForm.priceMonthly) payload.priceMonthly = Number(editForm.priceMonthly);
+    if (editForm.vehicleSize) payload.vehicleSize = editForm.vehicleSize;
+    if (editForm.planId) payload.planId = editForm.planId;
+    if (editForm.cityId) payload.cityId = editForm.cityId;
+    if (editForm.effectiveFrom) payload.effectiveFrom = editForm.effectiveFrom;
+    updateMutation.mutate(payload);
   };
 
   const cities = citiesData?.data?.data || citiesData?.data || [];
@@ -97,7 +123,7 @@ export default function PricingPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-autozy-charcoal">Pricing Engine</h1>
-          <p className="text-sm text-gray-500 mt-1">City x Vehicle x Plan pricing matrix</p>
+          <p className="text-sm text-gray-500 mt-1">City × Vehicle × Plan pricing matrix (All prices include 18% GST)</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -123,7 +149,7 @@ export default function PricingPage() {
           onChange={(e) => setSelectedCity(e.target.value)}
           className="px-4 py-2 border rounded-lg bg-white text-sm"
         >
-          <option value="">Select City</option>
+          <option value="">All Cities</option>
           {cityList.map((c: any) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
@@ -182,7 +208,6 @@ export default function PricingPage() {
         </div>
       )}
 
-      {/* No placeholder needed anymore since we show all data by default */}
       <div className="bg-white rounded-xl shadow-sm">
           <div className="p-4 border-b">
             <h3 className="font-semibold text-autozy-charcoal">Pricing Matrix</h3>
@@ -204,10 +229,9 @@ export default function PricingPage() {
                     <th className="px-4 py-3 text-left">City</th>
                     <th className="px-4 py-3 text-left">Plan</th>
                     <th className="px-4 py-3 text-left">Vehicle Size</th>
-                    <th className="px-4 py-3 text-left">Monthly Price</th>
-                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Monthly Price (incl. GST)</th>
                     <th className="px-4 py-3 text-left">Effective From</th>
-                    <th className="px-4 py-3 text-left">Effective To</th>
+                    <th className="px-4 py-3 text-left">Area</th>
                     <th className="px-4 py-3 text-left">Actions</th>
                   </tr>
                 </thead>
@@ -222,16 +246,11 @@ export default function PricingPage() {
                       <td className="px-4 py-3 font-semibold text-green-700">
                         ₹{Number(p.price_monthly || 0).toLocaleString('en-IN')}
                       </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={p.effective_to ? 'danger' : 'success'}>
-                          {p.effective_to ? 'Expired' : 'Active'}
-                        </Badge>
-                      </td>
                       <td className="px-4 py-3 text-gray-500">
                         {p.effective_from ? new Date(p.effective_from).toLocaleDateString('en-IN') : '-'}
                       </td>
                       <td className="px-4 py-3 text-gray-500">
-                        {p.effective_to ? new Date(p.effective_to).toLocaleDateString('en-IN') : 'Ongoing'}
+                        {p.area?.name || 'All Areas'}
                       </td>
                       <td className="px-4 py-3">
                         <button 
@@ -249,24 +268,82 @@ export default function PricingPage() {
           )}
         </div>
 
-      {/* Pricing Edit Modal */}
+      {/* Pricing Edit Modal — All fields editable */}
       {editingPricing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-pop overflow-hidden animate-slide-up">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-pop overflow-hidden animate-slide-up">
             <div className="px-6 py-4 border-b border-surface-border">
               <h3 className="text-lg font-bold text-autozy-charcoal">Edit Pricing</h3>
               <p className="text-xs text-gray-500 mt-1">
                 {editingPricing.city?.name || 'Global'} • {editingPricing.plan?.name} • {editingPricing.vehicle_size}
               </p>
             </div>
-            <div className="p-6">
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Monthly Price (₹)</label>
-              <input
-                type="number"
-                value={editPrice}
-                onChange={(e) => setEditPrice(e.target.value)}
-                className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
-              />
+            <div className="p-6 space-y-4">
+              {/* Plan */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Plan</label>
+                <select
+                  value={editForm.planId || ''}
+                  onChange={(e) => setEditForm({ ...editForm, planId: e.target.value })}
+                  className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                >
+                  <option value="">Select Plan</option>
+                  {planList.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Vehicle Size */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Vehicle Size</label>
+                <select
+                  value={editForm.vehicleSize || ''}
+                  onChange={(e) => setEditForm({ ...editForm, vehicleSize: e.target.value })}
+                  className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                >
+                  {VEHICLE_SIZES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* City */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">City</label>
+                <select
+                  value={editForm.cityId || ''}
+                  onChange={(e) => setEditForm({ ...editForm, cityId: e.target.value })}
+                  className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                >
+                  <option value="">Select City</option>
+                  {cityList.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Monthly Price */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Monthly Price (₹ incl. GST)</label>
+                <input
+                  type="number"
+                  value={editForm.priceMonthly || ''}
+                  onChange={(e) => setEditForm({ ...editForm, priceMonthly: e.target.value })}
+                  className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                />
+              </div>
+
+              {/* Effective From */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Effective From</label>
+                <input
+                  type="date"
+                  value={editForm.effectiveFrom || ''}
+                  onChange={(e) => setEditForm({ ...editForm, effectiveFrom: e.target.value })}
+                  className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                />
+              </div>
             </div>
             <div className="px-6 py-4 bg-surface-muted border-t border-surface-border flex justify-end gap-3">
               <button
@@ -276,11 +353,11 @@ export default function PricingPage() {
                 Cancel
               </button>
               <button
-                onClick={() => updateMutation.mutate({ id: editingPricing.id, priceMonthly: Number(editPrice) })}
-                disabled={updateMutation.isPending || !editPrice}
+                onClick={handleSaveEdit}
+                disabled={updateMutation.isPending || !editForm.priceMonthly}
                 className="px-4 py-2 bg-autozy-yellow text-autozy-dark rounded-lg font-medium text-sm disabled:opacity-50"
               >
-                {updateMutation.isPending ? 'Saving...' : 'Save Price'}
+                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -310,7 +387,7 @@ export default function PricingPage() {
                       type="text"
                       value={planForm.name}
                       onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
-                      placeholder="e.g. Platinum Wash"
+                      placeholder="e.g. REGULAR_CLEANING"
                       className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:border-autozy-yellow focus:ring-1 focus:ring-autozy-yellow"
                     />
                   </div>
