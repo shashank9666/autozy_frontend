@@ -99,14 +99,7 @@ export default function TopBar() {
           </h1>
         </div>
 
-        {/* Search (desktop only) */}
-        <div className="hidden xl:flex items-center w-72 px-3 py-1.5 bg-surface-muted border border-surface-border rounded-lg text-sm text-gray-400 cursor-not-allowed">
-          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M16.65 16.65A7.5 7.5 0 1010.5 18a7.5 7.5 0 006.15-1.35z" />
-          </svg>
-          <span className="flex-1">Search…</span>
-          <kbd className="text-2xs bg-white border border-surface-border rounded px-1.5 py-0.5 text-gray-500 font-mono">⌘K</kbd>
-        </div>
+
 
         {/* Notifications */}
         <Link

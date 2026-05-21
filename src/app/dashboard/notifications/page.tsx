@@ -1,12 +1,20 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/lib/api';
 import Badge from '@/components/Badge';
+import Button from '@/components/Button';
 import { format } from 'date-fns';
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
+  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
+  const [audienceType, setAudienceType] = useState('ALL_CUSTOMERS');
+  const [targetId, setTargetId] = useState('');
+  const [targetRole, setTargetRole] = useState('CITY_MANAGER');
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -18,6 +26,28 @@ export default function NotificationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
+  });
+
+  const broadcastMutation = useMutation({
+    mutationFn: () => notificationsApi.broadcast({
+      title: broadcastTitle,
+      body: broadcastBody,
+      audienceType,
+      targetId: (audienceType === 'SPECIFIC_CUSTOMER' || audienceType === 'SPECIFIC_STAFF') ? targetId : undefined,
+      targetRole: audienceType === 'SPECIFIC_ROLE' ? targetRole : undefined,
+    }),
+    onSuccess: () => {
+      setIsBroadcastOpen(false);
+      setBroadcastTitle('');
+      setBroadcastBody('');
+      setAudienceType('ALL_CUSTOMERS');
+      setTargetId('');
+      alert('Broadcast sent successfully!');
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to send broadcast');
+    }
   });
 
   const notifications = data?.data?.items || data?.data || [];
@@ -41,6 +71,9 @@ export default function NotificationsPage() {
           <h1 className="text-2xl font-bold text-autozy-charcoal">Notifications</h1>
           <p className="text-sm text-gray-500 mt-1">System alerts and activity logs</p>
         </div>
+        <Button onClick={() => setIsBroadcastOpen(true)}>
+          📢 New Broadcast
+        </Button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -63,8 +96,8 @@ export default function NotificationsPage() {
         ) : (
           <div className="divide-y">
             {notifList.map((notif: any) => (
-              <div 
-                key={notif.id} 
+              <div
+                key={notif.id}
                 className={`p-4 hover:bg-gray-50 transition-colors flex gap-4 ${!notif.is_read ? 'bg-yellow-50/30' : ''}`}
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${!notif.is_read ? 'bg-autozy-yellow/20 text-autozy-dark' : 'bg-gray-100 text-gray-400'}`}>
@@ -108,6 +141,97 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+
+      {isBroadcastOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-pop overflow-hidden animate-slide-up">
+            <div className="px-6 py-4 border-b border-surface-border">
+              <h3 className="text-lg font-bold text-autozy-charcoal">Broadcast Notification</h3>
+              <p className="text-xs text-gray-500 mt-1">Send a message to all customers</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Audience</label>
+                <select
+                  value={audienceType}
+                  onChange={(e) => setAudienceType(e.target.value)}
+                  className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none bg-white"
+                >
+                  <option value="ALL_CUSTOMERS">All Customers</option>
+                  <option value="ALL_STAFF">All Staff</option>
+                  <option value="SPECIFIC_ROLE">Specific Staff Role</option>
+                  <option value="SPECIFIC_CUSTOMER">Specific Customer </option>
+                  <option value="SPECIFIC_STAFF">Specific Staff</option>
+                </select>
+              </div>
+
+              {audienceType === 'SPECIFIC_ROLE' && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Select Role</label>
+                  <select
+                    value={targetRole}
+                    onChange={(e) => setTargetRole(e.target.value)}
+                    className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none bg-white"
+                  >
+                    <option value="CITY_MANAGER">City Manager</option>
+                    <option value="SUPERVISOR">Supervisor</option>
+                    <option value="DETAILER">Detailer</option>
+                    <option value="INSPECTOR">Inspector</option>
+                  </select>
+                </div>
+              )}
+
+              {(audienceType === 'SPECIFIC_CUSTOMER' || audienceType === 'SPECIFIC_STAFF') && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">User / Staff Email</label>
+                  <input
+                    type="email"
+                    value={targetId}
+                    onChange={(e) => setTargetId(e.target.value)}
+                    placeholder="e.g. user@example.com"
+                    className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Title</label>
+                <input
+                  type="text"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  placeholder="e.g. Flash Sale!"
+                  className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Message</label>
+                <textarea
+                  value={broadcastBody}
+                  onChange={(e) => setBroadcastBody(e.target.value)}
+                  placeholder="Type your message here..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none resize-none"
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-surface-muted border-t border-surface-border flex justify-end gap-3">
+              <button
+                onClick={() => setIsBroadcastOpen(false)}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900"
+              >
+                Cancel
+              </button>
+              <Button
+                onClick={() => broadcastMutation.mutate()}
+                disabled={broadcastMutation.isPending || !broadcastTitle || !broadcastBody}
+              >
+                {broadcastMutation.isPending ? 'Sending...' : 'Send Broadcast'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

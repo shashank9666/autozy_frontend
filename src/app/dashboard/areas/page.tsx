@@ -12,6 +12,8 @@ export default function AreasPage() {
   const [cityName, setCityName] = useState('');
   const [cityState, setCityState] = useState('');
   const [areaForm, setAreaForm] = useState({ name: '', maxCapacity: 100, pincode: '', centerLat: '', centerLng: '', radiusKm: 3 });
+  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ maxCapacity: 100, isActive: true });
 
   const { data: citiesData, isLoading } = useQuery({
     queryKey: ['cities'],
@@ -34,6 +36,14 @@ export default function AreasPage() {
       queryClient.invalidateQueries({ queryKey: ['cities'] });
       setShowCreateArea(null);
       setAreaForm({ name: '', maxCapacity: 100, pincode: '', centerLat: '', centerLng: '', radiusKm: 3 });
+    },
+  });
+
+  const updateAreaMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => areasApi.updateArea(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cities'] });
+      setEditingAreaId(null);
     },
   });
 
@@ -160,14 +170,36 @@ export default function AreasPage() {
                             <td className="px-4 py-3 font-medium">{area.name}</td>
                             <td className="px-4 py-3 text-gray-500">{area.pincode || '-'}</td>
                             <td className="px-4 py-3">
-                              <Badge variant={
-                                area.status === 'AVAILABLE' ? 'success' :
-                                area.status === 'FULL' ? 'danger' : 'warning'
-                              }>
-                                {area.status}
-                              </Badge>
+                              {editingAreaId === area.id ? (
+                                <select 
+                                  value={editForm.isActive ? 'true' : 'false'}
+                                  onChange={(e) => setEditForm({ ...editForm, isActive: e.target.value === 'true' })}
+                                  className="px-2 py-1 border rounded text-xs"
+                                >
+                                  <option value="true">Active</option>
+                                  <option value="false">Inactive</option>
+                                </select>
+                              ) : (
+                                <Badge variant={
+                                  area.status === 'AVAILABLE' ? 'success' :
+                                  area.status === 'FULL' ? 'danger' : 'warning'
+                                }>
+                                  {area.status} {!area.is_active && '(Inactive)'}
+                                </Badge>
+                              )}
                             </td>
-                            <td className="px-4 py-3">{area.current_subscriptions || 0} / {area.max_capacity}</td>
+                            <td className="px-4 py-3">
+                              {editingAreaId === area.id ? (
+                                <input 
+                                  type="number" 
+                                  value={editForm.maxCapacity}
+                                  onChange={(e) => setEditForm({ ...editForm, maxCapacity: +e.target.value })}
+                                  className="w-16 px-2 py-1 border rounded text-xs"
+                                />
+                              ) : (
+                                <span>{area.current_subscriptions || 0} / {area.max_capacity}</span>
+                              )}
+                            </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <div className="w-20 h-2 bg-gray-200 rounded-full">
@@ -184,21 +216,47 @@ export default function AreasPage() {
                                 {area.is_onboarding_paused ? 'Paused' : 'Open'}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3">
-                              {area.is_onboarding_paused ? (
-                                <button
-                                  onClick={() => resumeMutation.mutate(area.id)}
-                                  className="text-green-600 text-xs font-medium hover:underline"
-                                >
-                                  Resume
-                                </button>
+                            <td className="px-4 py-3 flex gap-3 items-center">
+                              {editingAreaId === area.id ? (
+                                <>
+                                  <button
+                                    onClick={() => updateAreaMutation.mutate({ id: area.id, data: { maxCapacity: editForm.maxCapacity, isActive: editForm.isActive } })}
+                                    disabled={updateAreaMutation.isPending}
+                                    className="text-blue-600 text-xs font-medium hover:underline disabled:opacity-50"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingAreaId(null)}
+                                    className="text-gray-500 text-xs font-medium hover:underline"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
                               ) : (
-                                <button
-                                  onClick={() => pauseMutation.mutate(area.id)}
-                                  className="text-red-600 text-xs font-medium hover:underline"
-                                >
-                                  Pause
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => { setEditingAreaId(area.id); setEditForm({ maxCapacity: area.max_capacity, isActive: area.is_active }); }}
+                                    className="text-blue-600 text-xs font-medium hover:underline"
+                                  >
+                                    Edit
+                                  </button>
+                                  {area.is_onboarding_paused ? (
+                                    <button
+                                      onClick={() => resumeMutation.mutate(area.id)}
+                                      className="text-green-600 text-xs font-medium hover:underline"
+                                    >
+                                      Resume
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => pauseMutation.mutate(area.id)}
+                                      className="text-red-600 text-xs font-medium hover:underline"
+                                    >
+                                      Pause
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </td>
                           </tr>
