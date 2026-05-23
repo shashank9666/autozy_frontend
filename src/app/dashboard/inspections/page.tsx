@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { inspectionsApi, staffApi, subscriptionsApi } from '@/lib/api';
+import { inspectionsApi, staffApi, vehiclesApi } from '@/lib/api';
 import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
 import ExportButton from '@/components/ExportButton';
@@ -44,9 +44,9 @@ export default function InspectionsPage() {
     enabled: showModal,
   });
 
-  const { data: subsData } = useQuery({
-    queryKey: ['subscriptions'],
-    queryFn: () => subscriptionsApi.getAll({ limit: 100 }),
+  const { data: vehiclesData } = useQuery({
+    queryKey: ['vehicles'],
+    queryFn: () => vehiclesApi.getAll(),
     enabled: showModal,
   });
 
@@ -123,7 +123,7 @@ export default function InspectionsPage() {
 
   const allInspections = getArray(data);
   const inspectors = getArray(staffData);
-  const subscriptions = getArray(subsData);
+  const vehicles = getArray(vehiclesData);
 
   const counts = {
     pending: allInspections.filter((i: any) => i.status === 'PENDING').length,
@@ -273,20 +273,27 @@ export default function InspectionsPage() {
             {/* Left Column: Core Fields */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Subscription / Vehicle</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle</label>
                 <select
-                  value={form.subscription_id}
+                  value={form.vehicle_id}
                   onChange={(e) => {
-                    const sub = subscriptions.find((s: any) => s.id === e.target.value);
-                    setForm({ ...form, subscription_id: e.target.value, vehicle_id: sub?.vehicle_id || '' });
+                    if (!e.target.value) {
+                      setForm({ ...form, vehicle_id: '', subscription_id: '' });
+                    } else {
+                      const v = vehicles.find((x: any) => x.id === e.target.value);
+                      setForm({
+                        ...form,
+                        vehicle_id: e.target.value,
+                        subscription_id: v?.active_subscription?.id || '',
+                      });
+                    }
                   }}
                   className="w-full px-4 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-autozy-yellow focus:border-transparent transition-all duration-200"
-                  required
                 >
-                  <option value="">Select Subscription</option>
-                  {subscriptions.map((s: any) => (
-                    <option key={s.id} value={s.id}>
-                      {s.vehicle?.vehicle_number} ({s.user?.name})
+                  <option value="">None</option>
+                  {vehicles.map((v: any) => (
+                    <option key={v.id} value={v.id}>
+                      {v.vehicle_number} ({v.brand} {v.model}) - {v.user?.name}
                     </option>
                   ))}
                 </select>

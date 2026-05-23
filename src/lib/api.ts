@@ -80,6 +80,11 @@ export const subscriptionsApi = {
   getStats: () => api.get('/admin/subscriptions/stats'),
 };
 
+// Vehicles
+export const vehiclesApi = {
+  getAll: () => api.get('/admin/vehicles'),
+};
+
 // Inspections
 export const inspectionsApi = {
   getAll: (params?: any) => api.get('/admin/inspections', { params }),
