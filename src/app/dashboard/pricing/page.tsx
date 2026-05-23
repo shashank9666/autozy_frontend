@@ -12,6 +12,12 @@ export default function PricingPage() {
   const [selectedCity, setSelectedCity] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   
+  // Search and Pagination States
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  
   // Pricing Edit Modal State
   const [editingPricing, setEditingPricing] = useState<any>(null);
   const [editForm, setEditForm] = useState<any>({});
@@ -79,6 +85,16 @@ export default function PricingPage() {
     },
   });
 
+  const deletePlanMutation = useMutation({
+    mutationFn: (id: string) => plansApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to delete plan');
+    }
+  });
+
   const handleEditPricing = (p: any) => {
     setEditingPricing(p);
     // Parse date safely
@@ -118,6 +134,25 @@ export default function PricingPage() {
   const pricing = pricingData?.data?.data || pricingData?.data || [];
   const pricingList = Array.isArray(pricing) ? pricing : [];
 
+  // Filter pricing matrix locally by search query
+  const filteredPricingList = pricingList.filter((p: any) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      p.city?.name?.toLowerCase().includes(query) ||
+      p.plan?.name?.toLowerCase().includes(query) ||
+      p.vehicle_size?.toLowerCase().includes(query) ||
+      p.area?.name?.toLowerCase().includes(query)
+    );
+  });
+
+  // Paginate the filtered list
+  const totalPages = Math.ceil(filteredPricingList.length / ITEMS_PER_PAGE);
+  const paginatedPricingList = filteredPricingList.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -143,22 +178,89 @@ export default function PricingPage() {
         </div>
       </div>
 
-      <div className="mb-6 flex items-center gap-4">
-        <select
-          value={selectedCity}
-          onChange={(e) => setSelectedCity(e.target.value)}
-          className="px-4 py-2 border rounded-lg bg-white text-sm"
-        >
-          <option value="">All Cities</option>
-          {cityList.map((c: any) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <span className="text-sm text-gray-500">
-          {selectedCity 
-            ? `${pricingList.length} pricing rules in this city` 
-            : `Total ${pricingList.length} pricing rules across all cities`}
-        </span>
+      {/* Search & Filter Bar */}
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 mb-6 transition-all duration-300 hover:shadow-md">
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+          
+          {/* City & Search Bar Container */}
+          <div className="flex flex-wrap items-center gap-4 flex-1">
+            <div className="flex flex-col gap-1 min-w-[150px]">
+              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">City</span>
+              <select
+                value={selectedCity}
+                onChange={(e) => {
+                  setSelectedCity(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-2.5 border border-gray-200 bg-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-autozy-yellow font-medium cursor-pointer hover:border-gray-300"
+              >
+                <option value="">All Cities</option>
+                {cityList.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search Input & Button */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                setSearchQuery(searchInput);
+                setCurrentPage(1);
+              }}
+              className="flex items-end gap-2 flex-1 max-w-lg mt-auto"
+            >
+              <div className="flex flex-col gap-1 flex-1 relative">
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Search Rules</span>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search by City, Plan or Vehicle Size..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-autozy-yellow focus:border-transparent transition-all bg-gray-50/50 hover:bg-gray-50 font-medium text-autozy-charcoal"
+                  />
+                  {(searchInput || searchQuery) && (
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setSearchInput('');
+                        setSearchQuery('');
+                        setCurrentPage(1);
+                      }}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-autozy-yellow text-autozy-dark hover:bg-yellow-400 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap h-[42px] flex items-center"
+              >
+                Search
+              </button>
+            </form>
+          </div>
+
+          <div className="text-right mt-auto lg:mt-0 flex flex-col justify-end">
+            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Pricing Rules Count</span>
+            <span className="text-sm font-semibold text-gray-600 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 inline-block self-end">
+              {selectedCity 
+                ? `${filteredPricingList.length} pricing rules in this city` 
+                : `Total ${filteredPricingList.length} pricing rules`}
+            </span>
+          </div>
+
+        </div>
       </div>
 
       {showCreate && selectedCity && (
@@ -221,49 +323,98 @@ export default function PricingPage() {
             </div>
           ) : pricingList.length === 0 ? (
             <div className="p-12 text-center text-gray-400">No pricing rules found</div>
+          ) : filteredPricingList.length === 0 ? (
+            <div className="p-16 text-center border-t border-gray-100 transition-all duration-300">
+              <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                <svg className="w-8 h-8 text-autozy-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-autozy-charcoal mb-1">No Matching Pricing Rules</h3>
+              <p className="text-sm text-gray-500 max-w-xs mx-auto mb-6">
+                We couldn't find any pricing rules matching "{searchQuery}". Try a different term or clear filters!
+              </p>
+              <button
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchQuery('');
+                  setCurrentPage(1);
+                }}
+                className="px-5 py-2.5 bg-autozy-yellow text-autozy-dark rounded-xl font-semibold text-sm hover:bg-yellow-400 transition-all duration-200 shadow-sm hover:shadow"
+              >
+                Reset Search
+              </button>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                  <tr>
-                    <th className="px-4 py-3 text-left">City</th>
-                    <th className="px-4 py-3 text-left">Plan</th>
-                    <th className="px-4 py-3 text-left">Vehicle Size</th>
-                    <th className="px-4 py-3 text-left">Monthly Price (incl. GST)</th>
-                    <th className="px-4 py-3 text-left">Effective From</th>
-                    <th className="px-4 py-3 text-left">Area</th>
-                    <th className="px-4 py-3 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                   {pricingList.map((p: any) => (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-autozy-charcoal">{p.city?.name || 'Global'}</td>
-                      <td className="px-4 py-3 font-medium">{p.plan?.name || '-'}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant="default">{p.vehicle_size}</Badge>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-green-700">
-                        ₹{Number(p.price_monthly || 0).toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {p.effective_from ? new Date(p.effective_from).toLocaleDateString('en-IN') : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {p.area?.name || 'All Areas'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button 
-                          onClick={() => handleEditPricing(p)}
-                          className="text-autozy-yellow hover:text-yellow-600 font-medium text-xs underline"
-                        >
-                          Edit
-                        </button>
-                      </td>
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                    <tr>
+                      <th className="px-4 py-3 text-left">City</th>
+                      <th className="px-4 py-3 text-left">Plan</th>
+                      <th className="px-4 py-3 text-left">Vehicle Size</th>
+                      <th className="px-4 py-3 text-left">Monthly Price (incl. GST)</th>
+                      <th className="px-4 py-3 text-left">Effective From</th>
+                      <th className="px-4 py-3 text-left">Area</th>
+                      <th className="px-4 py-3 text-left">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y">
+                     {paginatedPricingList.map((p: any) => (
+                      <tr key={p.id} className="table-row-hover hover:bg-gray-50/80">
+                        <td className="px-4 py-3 font-medium text-autozy-charcoal">{p.city?.name || 'Global'}</td>
+                        <td className="px-4 py-3 font-medium">{p.plan?.name || '-'}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant="default">{p.vehicle_size}</Badge>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-green-700">
+                          ₹{Number(p.price_monthly || 0).toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">
+                          {p.effective_from ? new Date(p.effective_from).toLocaleDateString('en-IN') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">
+                          {p.area?.name || 'All Areas'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button 
+                            onClick={() => handleEditPricing(p)}
+                            className="text-autozy-yellow hover:text-yellow-600 font-medium text-xs underline active-press"
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="p-4 border-t flex items-center justify-between">
+                  <span className="text-sm text-gray-500 font-medium">
+                    Page {currentPage} of {totalPages} ({filteredPricingList.length} total)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                      className="px-4 py-1.5 text-sm border border-gray-200 text-gray-600 rounded-xl disabled:opacity-40 hover:bg-gray-50 font-semibold transition-all active-press"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                      disabled={currentPage >= totalPages}
+                      className="px-4 py-1.5 text-sm border border-gray-200 text-gray-600 rounded-xl disabled:opacity-40 hover:bg-gray-50 font-semibold transition-all active-press"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -435,15 +586,29 @@ export default function PricingPage() {
                       <p className="font-medium text-sm text-autozy-charcoal">{plan.name}</p>
                       <p className="text-xs text-gray-500">{plan.description || 'No description'}</p>
                     </div>
-                    <button
-                      onClick={() => {
-                        setEditingPlan(plan);
-                        setPlanForm({ name: plan.name, description: plan.description || '' });
-                      }}
-                      className="text-xs font-semibold text-autozy-yellow hover:text-yellow-600"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          setEditingPlan(plan);
+                          setPlanForm({ name: plan.name, description: plan.description || '' });
+                        }}
+                        className="text-xs font-semibold text-autozy-yellow hover:text-yellow-600"
+                      >
+                        Edit
+                      </button>
+                      <span className="text-gray-300 text-xs select-none">|</span>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete the plan "${plan.name}"? This action cannot be undone.`)) {
+                            deletePlanMutation.mutate(plan.id);
+                          }
+                        }}
+                        disabled={deletePlanMutation.isPending}
+                        className="text-xs font-semibold text-red-500 hover:text-red-700 disabled:opacity-40"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

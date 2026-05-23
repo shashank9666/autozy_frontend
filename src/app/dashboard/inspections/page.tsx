@@ -30,6 +30,7 @@ export default function InspectionsPage() {
     keys_provided: false,
     security_permission: false,
     internal_cleaning_required: false,
+    notes: '',
   });
 
   const { data, isLoading } = useQuery({
@@ -79,6 +80,7 @@ export default function InspectionsPage() {
       keys_provided: false,
       security_permission: false,
       internal_cleaning_required: false,
+      notes: '',
     });
     setEditingId(null);
   };
@@ -96,6 +98,7 @@ export default function InspectionsPage() {
       keys_provided: insp.keys_provided || false,
       security_permission: insp.security_permission || false,
       internal_cleaning_required: insp.internal_cleaning_required || false,
+      notes: insp.notes || '',
     });
     setShowModal(true);
   };
@@ -266,120 +269,146 @@ export default function InspectionsPage() {
         title={editingId ? 'Edit Inspection' : 'New Inspection'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subscription / Vehicle</label>
-            <select
-              value={form.subscription_id}
-              onChange={(e) => {
-                const sub = subscriptions.find((s: any) => s.id === e.target.value);
-                setForm({ ...form, subscription_id: e.target.value, vehicle_id: sub?.vehicle_id || '' });
-              }}
-              className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
-              required
-            >
-              <option value="">Select Subscription</option>
-              {subscriptions.map((s: any) => (
-                <option key={s.id} value={s.id}>
-                  {s.vehicle?.vehicle_number} ({s.user?.name})
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column: Core Fields */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subscription / Vehicle</label>
+                <select
+                  value={form.subscription_id}
+                  onChange={(e) => {
+                    const sub = subscriptions.find((s: any) => s.id === e.target.value);
+                    setForm({ ...form, subscription_id: e.target.value, vehicle_id: sub?.vehicle_id || '' });
+                  }}
+                  className="w-full px-4 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-autozy-yellow focus:border-transparent transition-all duration-200"
+                  required
+                >
+                  <option value="">Select Subscription</option>
+                  {subscriptions.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.vehicle?.vehicle_number} ({s.user?.name})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Inspector</label>
+                <select
+                  value={form.inspector_id}
+                  onChange={(e) => setForm({ ...form, inspector_id: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-autozy-yellow focus:border-transparent transition-all duration-200"
+                >
+                  <option value="">Unassigned</option>
+                  {inspectors.map((i: any) => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-autozy-yellow focus:border-transparent transition-all duration-200"
+                  required
+                >
+                  {statusOptions.filter(o => o !== 'ALL').map(o => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <FormInput
+                label="Scheduled Date & Time"
+                type="datetime-local"
+                value={form.scheduled_at}
+                onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Right Column: Physical checks, location details & comments */}
+            <div className="space-y-4 flex flex-col justify-between">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Requirements & Flags</label>
+                <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50/50 rounded-xl border border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="parking_available"
+                      checked={form.parking_available}
+                      onChange={(e) => setForm({ ...form, parking_available: e.target.checked })}
+                      className="rounded border-gray-300 text-autozy-yellow focus:ring-autozy-yellow"
+                    />
+                    <label htmlFor="parking_available" className="text-xs font-medium text-gray-700 cursor-pointer">Parking Available</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="keys_provided"
+                      checked={form.keys_provided}
+                      onChange={(e) => setForm({ ...form, keys_provided: e.target.checked })}
+                      className="rounded border-gray-300 text-autozy-yellow focus:ring-autozy-yellow"
+                    />
+                    <label htmlFor="keys_provided" className="text-xs font-medium text-gray-700 cursor-pointer">Keys Provided</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="security_permission"
+                      checked={form.security_permission}
+                      onChange={(e) => setForm({ ...form, security_permission: e.target.checked })}
+                      className="rounded border-gray-300 text-autozy-yellow focus:ring-autozy-yellow"
+                    />
+                    <label htmlFor="security_permission" className="text-xs font-medium text-gray-700 cursor-pointer">Security Permission</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="internal_cleaning_required"
+                      checked={form.internal_cleaning_required}
+                      onChange={(e) => setForm({ ...form, internal_cleaning_required: e.target.checked })}
+                      className="rounded border-gray-300 text-autozy-yellow focus:ring-autozy-yellow"
+                    />
+                    <label htmlFor="internal_cleaning_required" className="text-xs font-medium text-gray-700 cursor-pointer">Internal Cleaning</label>
+                  </div>
+                </div>
+              </div>
+
+              <FormInput
+                label="Pillar Number"
+                type="text"
+                value={form.pillar_number}
+                onChange={(e) => setForm({ ...form, pillar_number: e.target.value })}
+              />
+
+              <div className="flex-1 flex flex-col">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  placeholder="Add inspection comments or notes..."
+                  className="w-full flex-1 min-h-[90px] px-4 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-autozy-yellow focus:border-transparent transition-all duration-200 resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Inspector</label>
-            <select
-              value={form.inspector_id}
-              onChange={(e) => setForm({ ...form, inspector_id: e.target.value })}
-              className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
-            >
-              <option value="">Unassigned</option>
-              {inspectors.map((i: any) => (
-                <option key={i.id} value={i.id}>{i.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="w-full px-4 py-2 border rounded-lg text-sm bg-white"
-              required
-            >
-              {statusOptions.filter(o => o !== 'ALL').map(o => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-          </div>
-
-          <FormInput
-            label="Scheduled Date & Time"
-            type="datetime-local"
-            value={form.scheduled_at}
-            onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="parking_available"
-                checked={form.parking_available}
-                onChange={(e) => setForm({ ...form, parking_available: e.target.checked })}
-              />
-              <label htmlFor="parking_available" className="text-sm">Parking Available</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="keys_provided"
-                checked={form.keys_provided}
-                onChange={(e) => setForm({ ...form, keys_provided: e.target.checked })}
-              />
-              <label htmlFor="keys_provided" className="text-sm">Keys Provided</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="security_permission"
-                checked={form.security_permission}
-                onChange={(e) => setForm({ ...form, security_permission: e.target.checked })}
-              />
-              <label htmlFor="security_permission" className="text-sm">Security Permission</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="internal_cleaning_required"
-                checked={form.internal_cleaning_required}
-                onChange={(e) => setForm({ ...form, internal_cleaning_required: e.target.checked })}
-              />
-              <label htmlFor="internal_cleaning_required" className="text-sm">Internal Cleaning</label>
-            </div>
-          </div>
-
-          <FormInput
-            label="Pillar Number"
-            type="text"
-            value={form.pillar_number}
-            onChange={(e) => setForm({ ...form, pillar_number: e.target.value })}
-          />
-
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={() => setShowModal(false)}
-              className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50"
+              className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="px-4 py-2 bg-autozy-yellow text-autozy-dark rounded-lg text-sm font-medium disabled:opacity-40"
+              className="px-4 py-2 bg-autozy-yellow text-autozy-dark rounded-lg text-sm font-medium hover:bg-yellow-400 transition-colors disabled:opacity-40"
             >
               {editingId ? 'Update Inspection' : 'Create Inspection'}
             </button>

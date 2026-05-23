@@ -5,12 +5,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { staffApi, rolesApi } from '@/lib/api';
 
 const AVAILABLE_PERMISSIONS = [
-  { id: 'manage_staff', label: 'Manage Staff' },
+  { id: 'manage_staff', label: 'Manage Staff (Workforce)' },
   { id: 'manage_customers', label: 'Manage Customers' },
   { id: 'manage_subscriptions', label: 'Manage Subscriptions' },
-  { id: 'manage_pricing', label: 'Manage Pricing' },
-  { id: 'view_financials', label: 'View Financials' },
-  { id: 'send_broadcasts', label: 'Send Broadcasts' },
+  { id: 'manage_pricing', label: 'Manage Pricing Matrix' },
+  { id: 'view_financials', label: 'View Financials (General)' },
+  { id: 'view_payments', label: 'View Payments' },
+  { id: 'manage_expenses', label: 'Manage Expenses' },
+  { id: 'send_broadcasts', label: 'Send Broadcasts & Notifications' },
+  { id: 'manage_inspections', label: 'Manage Inspections' },
+  { id: 'manage_services', label: 'Manage Daily Services' },
+  { id: 'manage_tickets', label: 'Manage Support Tickets' },
+  { id: 'manage_addons', label: 'Manage Add-ons & Equipment' },
+  { id: 'view_reports', label: 'View Analytics & Reports' },
+  { id: 'manage_config', label: 'Manage System Config' },
+  { id: 'manage_roles', label: 'Manage Roles & Permissions' },
 ];
 
 const COLOR_MAP: Record<string, { bg: string; text: string; badge: string }> = {

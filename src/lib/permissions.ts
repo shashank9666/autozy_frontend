@@ -10,7 +10,8 @@ export type StaffRole =
   | 'SUPERVISOR'
   | 'DETAILER'
   | 'INSPECTOR'
-  | 'SPECIALIST';
+  | 'SPECIALIST'
+  | 'ACCOUNTANT';
 
 /** Module keys that match the dashboard route segments. */
 export type ModuleKey =
@@ -42,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<StaffRole, ModuleKey[] | '*'> = {
   DETAILER: ['dashboard', 'services'],
   INSPECTOR: ['dashboard', 'inspections'],
   SPECIALIST: ['dashboard', 'addons', 'services'],
+  ACCOUNTANT: ['dashboard', 'payments', 'reports', 'notifications'],
 };
 
 export function canAccess(role: string | undefined | null, module: ModuleKey): boolean {
@@ -123,5 +125,12 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     phone: '8800100004',
     city: 'Hyderabad',
     description: 'Premium add-on services (foam wash, interior, PPF).',
+  },
+  {
+    role: 'ACCOUNTANT',
+    label: 'City Accountant',
+    phone: '8800400001',
+    city: 'Hyderabad',
+    description: 'City accountant — manages daily city financials, payments, and expenses.',
   },
 ];

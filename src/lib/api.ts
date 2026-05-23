@@ -64,6 +64,7 @@ export const staffApi = {
   getById: (id: string) => api.get(`/admin/staff/${id}`),
   create: (data: any) => api.post('/admin/staff', data),
   update: (id: string, data: any) => api.patch(`/admin/staff/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/staff/${id}`),
   getPerformance: (id: string, startDate: string, endDate: string) =>
     api.get(`/admin/staff/${id}/performance`, { params: { startDate, endDate } }),
   getRolesSummary: () => api.get('/admin/roles/summary'),
@@ -135,6 +136,7 @@ export const plansApi = {
   getAll: () => api.get('/plans'),
   create: (data: any) => api.post('/admin/plans', data),
   update: (id: string, data: any) => api.patch(`/admin/plans/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/plans/${id}`),
 };
 
 // Pricing
@@ -168,7 +170,7 @@ export const notificationsApi = {
   getAll: (params?: any) => api.get('/notifications', { params }),
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id: string) => api.patch(`/notifications/${id}/read`),
-  broadcast: (data: { title: string; body: string; audienceType: string; targetId?: string; targetRole?: string }) => api.post('/notifications/broadcast', data),
+  broadcast: (data: { title: string; body: string; audienceType: string; targetId?: string; targetRole?: string; targetCityId?: string }) => api.post('/notifications/broadcast', data),
 };
 
 // Roles

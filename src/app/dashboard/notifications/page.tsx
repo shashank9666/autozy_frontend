@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notificationsApi } from '@/lib/api';
+import { notificationsApi, areasApi } from '@/lib/api';
 import Badge from '@/components/Badge';
 import Button from '@/components/Button';
 import { format } from 'date-fns';
@@ -13,13 +13,22 @@ export default function NotificationsPage() {
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastBody, setBroadcastBody] = useState('');
   const [audienceType, setAudienceType] = useState('ALL_CUSTOMERS');
-  const [targetId, setTargetId] = useState('');
+  const [targetEmail, setTargetEmail] = useState('');
+  const [targetPhone, setTargetPhone] = useState('');
+  const [targetCityId, setTargetCityId] = useState('');
   const [targetRole, setTargetRole] = useState('CITY_MANAGER');
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => notificationsApi.getAll({ limit: 50 }),
   });
+
+  const { data: citiesData } = useQuery({
+    queryKey: ['cities'],
+    queryFn: () => areasApi.getCities(),
+  });
+  const cities = citiesData?.data?.data || citiesData?.data || [];
+  const cityList = Array.isArray(cities) ? cities : [];
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => notificationsApi.markRead(id),
@@ -33,15 +42,22 @@ export default function NotificationsPage() {
       title: broadcastTitle,
       body: broadcastBody,
       audienceType,
-      targetId: (audienceType === 'SPECIFIC_CUSTOMER' || audienceType === 'SPECIFIC_STAFF') ? targetId : undefined,
+      targetId: (audienceType === 'SPECIFIC_CUSTOMER' || audienceType === 'SPECIFIC_STAFF' || audienceType === 'SPECIFIC_ROLE') 
+        ? (targetEmail || targetPhone) 
+        : (audienceType === 'CUSTOMERS_IN_CITY' || audienceType === 'STAFF_IN_CITY') 
+          ? targetCityId 
+          : undefined,
       targetRole: audienceType === 'SPECIFIC_ROLE' ? targetRole : undefined,
+      targetCityId: (audienceType === 'SPECIFIC_ROLE' && targetCityId) ? targetCityId : undefined,
     }),
     onSuccess: () => {
       setIsBroadcastOpen(false);
       setBroadcastTitle('');
       setBroadcastBody('');
       setAudienceType('ALL_CUSTOMERS');
-      setTargetId('');
+      setTargetEmail('');
+      setTargetPhone('');
+      setTargetCityId('');
       alert('Broadcast sent successfully!');
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
@@ -154,43 +170,149 @@ export default function NotificationsPage() {
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Audience</label>
                 <select
                   value={audienceType}
-                  onChange={(e) => setAudienceType(e.target.value)}
+                  onChange={(e) => {
+                    setAudienceType(e.target.value);
+                    setTargetEmail('');
+                    setTargetPhone('');
+                    setTargetCityId('');
+                  }}
                   className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none bg-white"
                 >
                   <option value="ALL_CUSTOMERS">All Customers</option>
                   <option value="ALL_STAFF">All Staff</option>
+                  <option value="CUSTOMERS_IN_CITY">Customers in City</option>
+                  <option value="STAFF_IN_CITY">Staff in City</option>
                   <option value="SPECIFIC_ROLE">Specific Staff Role</option>
-                  <option value="SPECIFIC_CUSTOMER">Specific Customer </option>
+                  <option value="SPECIFIC_CUSTOMER">Specific Customer</option>
                   <option value="SPECIFIC_STAFF">Specific Staff</option>
                 </select>
               </div>
 
-              {audienceType === 'SPECIFIC_ROLE' && (
+              {(audienceType === 'CUSTOMERS_IN_CITY' || audienceType === 'STAFF_IN_CITY') && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Select Role</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Select City</label>
                   <select
-                    value={targetRole}
-                    onChange={(e) => setTargetRole(e.target.value)}
+                    value={targetCityId}
+                    onChange={(e) => setTargetCityId(e.target.value)}
                     className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none bg-white"
                   >
-                    <option value="CITY_MANAGER">City Manager</option>
-                    <option value="SUPERVISOR">Supervisor</option>
-                    <option value="DETAILER">Detailer</option>
-                    <option value="INSPECTOR">Inspector</option>
+                    <option value="">Select City</option>
+                    {cityList.map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
               )}
 
+              {audienceType === 'SPECIFIC_ROLE' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Select Role</label>
+                    <select
+                      value={targetRole}
+                      onChange={(e) => setTargetRole(e.target.value)}
+                      className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none bg-white"
+                    >
+                      <option value="CITY_MANAGER">City Manager</option>
+                      <option value="SUPERVISOR">Supervisor</option>
+                      <option value="DETAILER">Detailer</option>
+                      <option value="INSPECTOR">Inspector</option>
+                      <option value="SPECIALIST">Specialist</option>
+                      <option value="ACCOUNTANT">Accountant</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Select City (optional)</label>
+                    <select
+                      value={targetCityId}
+                      onChange={(e) => setTargetCityId(e.target.value)}
+                      className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none bg-white"
+                    >
+                      <option value="">All Cities</option>
+                      {cityList.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="border-t pt-3 mt-3">
+                    <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">Target Specific Person of Role (Optional)</p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email Address</label>
+                        <input
+                          type="email"
+                          value={targetEmail}
+                          onChange={(e) => {
+                            setTargetEmail(e.target.value);
+                            if (e.target.value) setTargetPhone('');
+                          }}
+                          placeholder="e.g. user@example.com"
+                          className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                        />
+                      </div>
+                      <div className="relative flex py-1.5 items-center">
+                        <div className="flex-grow border-t border-gray-200"></div>
+                        <span className="flex-shrink mx-3 text-[10px] font-bold text-gray-400 bg-white px-2 tracking-wider">
+                          OR
+                        </span>
+                        <div className="flex-grow border-t border-gray-200"></div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Phone Number</label>
+                        <input
+                          type="tel"
+                          value={targetPhone}
+                          onChange={(e) => {
+                            setTargetPhone(e.target.value);
+                            if (e.target.value) setTargetEmail('');
+                          }}
+                          placeholder="e.g. 9876500001"
+                          className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {(audienceType === 'SPECIFIC_CUSTOMER' || audienceType === 'SPECIFIC_STAFF') && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">User / Staff Email</label>
-                  <input
-                    type="email"
-                    value={targetId}
-                    onChange={(e) => setTargetId(e.target.value)}
-                    placeholder="e.g. user@example.com"
-                    className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email Address</label>
+                    <input
+                      type="email"
+                      value={targetEmail}
+                      onChange={(e) => {
+                        setTargetEmail(e.target.value);
+                        if (e.target.value) setTargetPhone('');
+                      }}
+                      placeholder="e.g. user@example.com"
+                      className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                    />
+                  </div>
+                  <div className="relative flex py-1.5 items-center">
+                    <div className="flex-grow border-t border-gray-200"></div>
+                    <span className="flex-shrink mx-3 text-[10px] font-bold text-gray-400 bg-white px-2 tracking-wider">
+                      OR
+                    </span>
+                    <div className="flex-grow border-t border-gray-200"></div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={targetPhone}
+                      onChange={(e) => {
+                        setTargetPhone(e.target.value);
+                        if (e.target.value) setTargetEmail('');
+                      }}
+                      placeholder="e.g. 9876500001"
+                      className="w-full px-3 py-2 border border-surface-border rounded-lg text-sm focus:border-autozy-yellow focus:ring-2 focus:ring-autozy-yellow/20 outline-none"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -224,7 +346,13 @@ export default function NotificationsPage() {
               </button>
               <Button
                 onClick={() => broadcastMutation.mutate()}
-                disabled={broadcastMutation.isPending || !broadcastTitle || !broadcastBody}
+                disabled={
+                  broadcastMutation.isPending || 
+                  !broadcastTitle || 
+                  !broadcastBody || 
+                  ((audienceType === 'SPECIFIC_CUSTOMER' || audienceType === 'SPECIFIC_STAFF') && !targetEmail && !targetPhone) ||
+                  ((audienceType === 'CUSTOMERS_IN_CITY' || audienceType === 'STAFF_IN_CITY') && !targetCityId)
+                }
               >
                 {broadcastMutation.isPending ? 'Sending...' : 'Send Broadcast'}
               </Button>

@@ -13,6 +13,7 @@ const ROLE_DOT: Record<string, string> = {
   DETAILER: 'bg-amber-500',
   INSPECTOR: 'bg-orange-500',
   SPECIALIST: 'bg-teal-500',
+  ACCOUNTANT: 'bg-rose-500',
 };
 
 export default function LoginPage() {

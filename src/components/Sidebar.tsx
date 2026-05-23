@@ -69,6 +69,7 @@ const ROLE_BADGE: Record<string, { bg: string; text: string; label: string }> = 
   DETAILER:     { bg: 'bg-amber-500/15',   text: 'text-amber-300',  label: 'Detailer' },
   INSPECTOR:    { bg: 'bg-orange-500/15',  text: 'text-orange-300', label: 'Inspector' },
   SPECIALIST:   { bg: 'bg-teal-500/15',    text: 'text-teal-300',   label: 'Specialist' },
+  ACCOUNTANT:   { bg: 'bg-rose-500/15',    text: 'text-rose-300',   label: 'Accountant' },
 };
 
 export default function Sidebar() {
