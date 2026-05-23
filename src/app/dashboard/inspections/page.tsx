@@ -124,6 +124,13 @@ export default function InspectionsPage() {
   const allInspections = getArray(data);
   const inspectors = getArray(staffData);
   const vehicles = getArray(vehiclesData);
+  const vehicleOptions = (() => {
+    const list = [...vehicles];
+    if (form.vehicle_id && !list.some((v: any) => v.id === form.vehicle_id)) {
+      list.unshift({ id: form.vehicle_id, vehicle_number: 'Previous vehicle', brand: '', model: '', user: { name: '' } });
+    }
+    return list;
+  })();
 
   const counts = {
     pending: allInspections.filter((i: any) => i.status === 'PENDING').length,
@@ -291,7 +298,7 @@ export default function InspectionsPage() {
                   className="w-full px-4 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-autozy-yellow focus:border-transparent transition-all duration-200"
                 >
                   <option value="">None</option>
-                  {vehicles.map((v: any) => (
+                  {vehicleOptions.map((v: any) => (
                     <option key={v.id} value={v.id}>
                       {v.vehicle_number} ({v.brand} {v.model}) - {v.user?.name}
                     </option>

@@ -85,6 +85,11 @@ export const vehiclesApi = {
   getAll: () => api.get('/admin/vehicles'),
 };
 
+export const vehicleDataApi = {
+  getBrands: () => api.get('/vehicle-data/brands'),
+  getModels: (brand: string) => api.get('/vehicle-data/models', { params: { brand } }),
+};
+
 // Inspections
 export const inspectionsApi = {
   getAll: (params?: any) => api.get('/admin/inspections', { params }),
